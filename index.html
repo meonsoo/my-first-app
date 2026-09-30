@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>할 일 목록</title>
+  <style>
+    :root {
+      --bg: #f6f6f4;
+      --card: #ffffff;
+      --text: #1c1c1e;
+      --muted: #8a8a8e;
+      --line: #ececea;
+      --field: #f6f6f4;
+      --primary: #f28b1e;
+      --on-primary: #ffffff;
+      --danger: #d4483b;
+      --shadow: 0 2px 4px rgba(20, 60, 100, 0.08), 0 16px 40px rgba(20, 60, 100, 0.18);
+      --sky: linear-gradient(180deg, #8fd3ff 0%, #c9ecff 55%, #eaf8ff 100%);
+      --wp-opacity: 0.55;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111112;
+        --card: #1a1a1c;
+        --text: #ededed;
+        --muted: #8e8e93;
+        --line: #2a2a2d;
+        --field: #232326;
+        --primary: #f28b1e;
+        --on-primary: #1a1a1c;
+        --danger: #ff6b5e;
+        --shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.45);
+        --sky: linear-gradient(180deg, #0b1630 0%, #16254a 60%, #1f2f55 100%);
+        --wp-opacity: 0.35;
+        color-scheme: dark;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--sky) fixed;
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+      line-height: 1.5;
+      display: flex;
+      justify-content: center;
+      padding: 110px 16px 64px;
+    }
+    .app {
+      width: 100%;
+      max-width: 440px;
+      height: fit-content;
+      background: var(--card);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 32px 28px 24px;
+    }
+    header { margin-bottom: 24px; }
+    h1 { margin: 0; font-size: 1.625rem; font-weight: 700; letter-spacing: -0.02em; }
+    .clock {
+      margin: 4px 0 0;
+      font-size: 0.875rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    form {
+      background: var(--field);
+      border-radius: 14px;
+      padding: 6px;
+    }
+    .row { display: flex; align-items: center; gap: 6px; }
+    .row + .row { margin-top: 2px; }
+    input {
+      font: inherit;
+      color: var(--text);
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      min-width: 0;
+    }
+    input:focus { outline: none; background: var(--card); }
+    #todo-input { flex: 1; padding: 10px 12px; font-size: 1rem; }
+    #todo-input::placeholder { color: var(--muted); }
+    input[type="date"], input[type="time"] {
+      padding: 6px 12px;
+      font-size: 0.8125rem;
+      color: var(--muted);
+    }
+    input[type="date"]:focus, input[type="time"]:focus { color: var(--text); }
+    button { font: inherit; border: none; cursor: pointer; }
+    .add-btn {
+      padding: 9px 16px;
+      border-radius: 10px;
+      background: var(--primary);
+      color: var(--on-primary);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .add-btn:hover { opacity: 0.85; }
+
+    ul { list-style: none; margin: 16px 0 0; padding: 0; }
+    li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 4px;
+      border-bottom: 1px solid var(--line);
+    }
+    li:last-child { border-bottom: none; }
+    .item { flex: 1; min-width: 0; }
+    .item-text { word-break: break-word; }
+    .item-meta { display: block; margin-top: 2px; font-size: 0.8125rem; color: var(--muted); }
+    .item-due.overdue { color: var(--danger); }
+    .delete-btn {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      font-size: 1.125rem;
+      line-height: 1;
+      opacity: 0.4;
+      transition: opacity 0.15s, color 0.15s, background 0.15s;
+    }
+    li:hover .delete-btn, .delete-btn:focus-visible { opacity: 1; }
+    .delete-btn:hover { color: var(--danger); background: var(--field); }
+    @media (hover: none) { .delete-btn { opacity: 1; } }
+
+    .empty { margin: 32px 0 16px; text-align: center; color: var(--muted); font-size: 0.9375rem; }
+    .count { margin: 12px 4px 0; text-align: right; color: var(--muted); font-size: 0.8125rem; }
+    .count:empty { display: none; }
+
+    /* ===== 캐릭터 테마 ===== */
+    .wallpaper {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .wp {
+      position: absolute;
+      opacity: var(--wp-opacity);
+      transform: rotate(var(--r));
+    }
+    .wp svg, .buddy svg, .char-icon svg, .title-icon svg { display: block; width: 100%; height: 100%; }
+    .app { position: relative; z-index: 1; }
+    .buddy {
+      position: absolute;
+      top: -66px;
+      width: 76px;
+      height: 76px;
+      animation: hop 1.4s ease-in-out infinite;
+    }
+    .buddy.left { left: 28px; }
+    .buddy.right { right: 32px; animation-delay: 0.7s; }
+    @keyframes hop {
+      0%, 100% { transform: translateY(0) scale(1, 1); }
+      15% { transform: translateY(0) scale(1.08, 0.92); }
+      45% { transform: translateY(-14px) scale(0.96, 1.04); }
+      75% { transform: translateY(0) scale(1.05, 0.95); }
+    }
+    .title-row { display: flex; align-items: center; gap: 8px; }
+    .title-icon { width: 34px; height: 34px; }
+    .char-icon { width: 34px; height: 34px; flex-shrink: 0; }
+    li:hover .char-icon { animation: hop 0.8s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .buddy, li:hover .char-icon { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wallpaper" id="wallpaper" aria-hidden="true"></div>
+  <main class="app">
+    <div class="buddy left" id="buddy-left" aria-hidden="true"></div>
+    <div class="buddy right" id="buddy-right" aria-hidden="true"></div>
+    <header>
+      <div class="title-row">
+        <span class="title-icon" id="title-icon" aria-hidden="true"></span>
+        <h1>할 일 목록</h1>
+      </div>
+      <p class="clock" id="clock"></p>
+    </header>
+    <form id="todo-form">
+      <div class="row">
+        <input type="text" id="todo-input" placeholder="할 일을 입력하세요" autocomplete="off" required>
+        <button type="submit" class="add-btn">추가</button>
+      </div>
+      <div class="row">
+        <input type="date" id="todo-date" aria-label="날짜">
+        <input type="time" id="todo-time" aria-label="시간">
+      </div>
+    </form>
+    <ul id="todo-list"></ul>
+    <p class="empty" id="empty-msg">할 일이 없습니다.</p>
+    <p class="count" id="count"></p>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "my-first-app-todos";
+    const form = document.getElementById("todo-form");
+    const input = document.getElementById("todo-input");
+    const list = document.getElementById("todo-list");
+    const emptyMsg = document.getElementById("empty-msg");
+    const count = document.getElementById("count");
+    const clock = document.getElementById("clock");
+    const dateInput = document.getElementById("todo-date");
+    const timeInput = document.getElementById("todo-time");
+
+    // 직접 그린 캐릭터 (공식 이미지 아님): 주황버섯, 슬라임, 돼지, 달팽이
+    const SHADOW = '<ellipse cx="32" cy="59" rx="18" ry="3" fill="#000" opacity=".15"/>';
+    const EYES = (y, dx = 6) =>
+      `<circle cx="${32 - dx}" cy="${y}" r="2.8" fill="#2b1d14"/><circle cx="${32 + dx}" cy="${y}" r="2.8" fill="#2b1d14"/>` +
+      `<circle cx="${32 - dx + 1}" cy="${y - 1}" r=".9" fill="#fff"/><circle cx="${32 + dx + 1}" cy="${y - 1}" r=".9" fill="#fff"/>`;
+    const CHARACTERS = [
+      // 주황버섯
+      `<svg viewBox="0 0 64 64">${SHADOW}
+        <ellipse cx="24" cy="56" rx="6" ry="3.5" fill="#c97a3a"/><ellipse cx="40" cy="56" rx="6" ry="3.5" fill="#c97a3a"/>
+        <rect x="17" y="28" width="30" height="27" rx="12" fill="#fde6c4"/>
+        ${EYES(40)}
+        <ellipse cx="21" cy="46" rx="3" ry="1.8" fill="#f5a38a" opacity=".7"/><ellipse cx="43" cy="46" rx="3" ry="1.8" fill="#f5a38a" opacity=".7"/>
+        <path d="M29 46q3 2.5 6 0" stroke="#2b1d14" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <path d="M5 31C5 13 17 5 32 5s27 8 27 26c0 3-2 5-6 5H11c-4 0-6-2-6-5z" fill="#f28b1e"/>
+        <path d="M9 30C10 17 19 9 30 8" stroke="#ffb866" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+        <circle cx="22" cy="18" r="5" fill="#fff"/><circle cx="40" cy="14" r="3.5" fill="#fff"/><circle cx="48" cy="25" r="3.2" fill="#fff"/><circle cx="33" cy="25" r="2.4" fill="#fff"/>
+      </svg>`,
+      // 초록 슬라임
+      `<svg viewBox="0 0 64 64">${SHADOW}
+        <path d="M7 52c0-19 11-33 25-33s25 14 25 33c0 4-2 6-6 6H13c-4 0-6-2-6-6z" fill="#7fd15e"/>
+        <path d="M13 50c0-13 6-22 14-26" stroke="#b6ee8f" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/>
+        <path d="M32 20c-3-7 1-14 9-15-1 8-4 12-9 15z" fill="#3e9a37"/>
+        <path d="M32 20c-4-4-10-4-13-1 4 3 9 3 13 1z" fill="#56b84a"/>
+        ${EYES(40, 7)}
+        <path d="M28 47q4 3.5 8 0" stroke="#1d2b17" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      </svg>`,
+      // 분홍 돼지
+      `<svg viewBox="0 0 64 64">${SHADOW}
+        <path d="M13 22l3-14 12 9z" fill="#f59bb0"/><path d="M51 22l-3-14-12 9z" fill="#f59bb0"/>
+        <circle cx="32" cy="35" r="22" fill="#ffc3d0"/>
+        <path d="M20 16q12-6 24 0" stroke="#e8455f" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <circle cx="32" cy="14" r="3.5" fill="#e8455f"/>
+        ${EYES(30, 9)}
+        <ellipse cx="32" cy="41" rx="9" ry="6.5" fill="#f497ab"/>
+        <ellipse cx="29" cy="41" rx="1.6" ry="2.2" fill="#8a3a4c"/><ellipse cx="35" cy="41" rx="1.6" ry="2.2" fill="#8a3a4c"/>
+        <ellipse cx="17" cy="38" rx="3" ry="2" fill="#f58aa2" opacity=".6"/><ellipse cx="47" cy="38" rx="3" ry="2" fill="#f58aa2" opacity=".6"/>
+      </svg>`,
+      // 파란 달팽이
+      `<svg viewBox="0 0 64 64">${SHADOW}
+        <path d="M6 53c0-5 4-8 10-8h35c5 0 8 3 8 7s-3 5-7 5H11c-3 0-5-2-5-4z" fill="#fcd9a8"/>
+        <path d="M11 38l-3-11M19 37l2-11" stroke="#e0b27a" stroke-width="2.2" stroke-linecap="round"/>
+        <circle cx="8" cy="26" r="2.6" fill="#2b1d14"/><circle cx="21" cy="25" r="2.6" fill="#2b1d14"/>
+        <circle cx="15" cy="44" r="9" fill="#fcd9a8"/>
+        <path d="M11 47q4 3 8 0" stroke="#2b1d14" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <circle cx="40" cy="33" r="18" fill="#4f8fe0"/>
+        <path d="M40 33m0-3a3 3 0 1 1-3 3 6 6 0 0 1 6-6 9 9 0 0 1 9 9 12 12 0 0 1-12 12 15 15 0 0 1-15-15" stroke="#2c62b5" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <ellipse cx="33" cy="21" rx="5" ry="2.5" fill="#fff" opacity=".45" transform="rotate(-30 33 21)"/>
+      </svg>`,
+    ];
+    const charFor = (id) => CHARACTERS[Math.floor(Math.abs(id)) % CHARACTERS.length];
+
+    // 배경을 캐릭터로 도배: 격자 칸마다 하나씩, 위치/크기/각도를 조금씩 흔듦
+    const wallpaper = document.getElementById("wallpaper");
+    function renderWallpaper() {
+      const cell = 96;
+      const cols = Math.ceil(window.innerWidth / cell) + 1;
+      const rows = Math.ceil(window.innerHeight / cell) + 1;
+      let html = "";
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const size = 40 + Math.random() * 28;
+          const x = c * cell + (r % 2 ? cell / 2 : 0) + (Math.random() - 0.5) * 24 - size / 2;
+          const y = r * cell + (Math.random() - 0.5) * 24 - size / 2;
+          const rot = (Math.random() - 0.5) * 40;
+          const ch = CHARACTERS[(r * 3 + c) % CHARACTERS.length];
+          html += `<span class="wp" style="left:${x}px;top:${y}px;width:${size}px;height:${size}px;--r:${rot}deg">${ch}</span>`;
+        }
+      }
+      wallpaper.innerHTML = html;
+    }
+    document.getElementById("buddy-left").innerHTML = CHARACTERS[0];
+    document.getElementById("buddy-right").innerHTML = CHARACTERS[1];
+    document.getElementById("title-icon").innerHTML = CHARACTERS[0];
+    renderWallpaper();
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(renderWallpaper, 200);
+    });
+
+    const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+    const pad = (n) => String(n).padStart(2, "0");
+
+    // 예: "2026년 9월 30일 (수)"
+    function formatDay(date, withYear = false) {
+      const year = withYear ? `${date.getFullYear()}년 ` : "";
+      return `${year}${date.getMonth() + 1}월 ${date.getDate()}일 (${WEEKDAYS[date.getDay()]})`;
+    }
+
+    // 예: "오후 3:12" / "오후 3:12:45"
+    function formatTime(date, withSeconds = false) {
+      const h = date.getHours();
+      const ampm = h < 12 ? "오전" : "오후";
+      const seconds = withSeconds ? `:${pad(date.getSeconds())}` : "";
+      return `${ampm} ${h % 12 || 12}:${pad(date.getMinutes())}${seconds}`;
+    }
+
+    // "2026-10-04" → 로컬 날짜 (new Date("2026-10-04")는 UTC로 해석되므로 직접 조립)
+    function localDateString(date) {
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    function parseDue(todo) {
+      const [y, m, d] = todo.dueDate.split("-").map(Number);
+      const [hh, mm] = todo.dueTime ? todo.dueTime.split(":").map(Number) : [0, 0];
+      return new Date(y, m - 1, d, hh, mm);
+    }
+
+    function isOverdue(todo) {
+      if (todo.dueTime) return parseDue(todo) < new Date();
+      return todo.dueDate < localDateString(new Date());
+    }
+
+    function updateClock() {
+      const now = new Date();
+      clock.textContent = `${formatDay(now, true)} ${formatTime(now, true)}`;
+    }
+
+    let todos = load();
+
+    function load() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch {
+        return [];
+      }
+    }
+
+    function save() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+      } catch {
+        // 저장소를 쓸 수 없는 환경에서는 저장 없이 동작
+      }
+    }
+
+    function render() {
+      list.innerHTML = "";
+      todos.forEach((todo) => {
+        const li = document.createElement("li");
+        const item = document.createElement("div");
+        item.className = "item";
+        const text = document.createElement("span");
+        text.className = "item-text";
+        text.textContent = todo.text;
+        item.appendChild(text);
+
+        if (todo.dueDate || todo.createdAt) {
+          const meta = document.createElement("span");
+          meta.className = "item-meta";
+          if (todo.dueDate) {
+            const due = document.createElement("time");
+            due.className = "item-due" + (isOverdue(todo) ? " overdue" : "");
+            due.dateTime = todo.dueTime ? `${todo.dueDate}T${todo.dueTime}` : todo.dueDate;
+            const dueDate = parseDue(todo);
+            due.textContent = formatDay(dueDate) + (todo.dueTime ? " " + formatTime(dueDate) : "");
+            meta.appendChild(due);
+          }
+          if (todo.createdAt) {
+            const created = new Date(todo.createdAt);
+            meta.append(`${todo.dueDate ? " · " : ""}추가 ${formatDay(created)} ${formatTime(created)}`);
+          }
+          item.appendChild(meta);
+        }
+
+        const del = document.createElement("button");
+        del.className = "delete-btn";
+        del.textContent = "×";
+        del.setAttribute("aria-label", "삭제");
+        del.title = "삭제";
+        del.addEventListener("click", () => removeTodo(todo.id));
+
+        const icon = document.createElement("span");
+        icon.className = "char-icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.innerHTML = charFor(todo.id);
+
+        li.append(icon, item, del);
+        list.appendChild(li);
+      });
+      emptyMsg.hidden = todos.length > 0;
+      count.textContent = todos.length > 0 ? `총 ${todos.length}개` : "";
+    }
+
+    function addTodo(text, dueDate, dueTime) {
+      todos.push({ id: Date.now() + Math.random(), text, createdAt: Date.now(), dueDate, dueTime });
+      save();
+      render();
+    }
+
+    function removeTodo(id) {
+      todos = todos.filter((todo) => todo.id !== id);
+      save();
+      render();
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      const dueTime = timeInput.value;
+      // 시간만 고른 경우 오늘 날짜로 지정
+      const dueDate = dateInput.value || (dueTime ? localDateString(new Date()) : "");
+      addTodo(text, dueDate, dueDate ? dueTime : "");
+      input.value = "";
+      dateInput.value = "";
+      timeInput.value = "";
+      input.focus();
+    });
+
+    render();
+    updateClock();
+    setInterval(updateClock, 1000);
+    // 시간이 지나 기한이 넘은 항목을 빨간색으로 바꾸기 위해 1분마다 다시 그림
+    setInterval(render, 60 * 1000);
+  </script>
+</body>
+</html>
